@@ -13,6 +13,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.zweaver.statistics.utility.ListFilter;
 import com.zweaver.statistics.utility.ListFilterPredicate;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,28 +57,12 @@ public class FileUploadController {
                 fileContents.add(Arrays.asList(currentLine.split("\\s*,\\s*")));
             }
 
-            System.out.println(fileContents.get(0).get(0));
-
+            // example conditions you might get from user
             List<Integer> indices = new ArrayList<Integer>(){{ add(0); add(2); }};
             List<String> values = new ArrayList<String>(){{ add("a"); add("f"); }};
             List<String> conds = new ArrayList<String>(){{ add("or"); }};
-
-            ListFilterPredicate compositePredicate = new ListFilterPredicate(indices.get(0), values.get(0));
-            Predicate<List<String>> compPredicate = compositePredicate;
-            if (conds.size() > 0) {
-                for (int i = 0; i < conds.size(); ++i) {
-                    if (conds.get(i).equals("and")) {
-                        compPredicate = compPredicate.and(new ListFilterPredicate(indices.get(i+1), values.get(i+1)));
-                    }
-                    else if (conds.get(i).equals("or")) {
-                        compPredicate = compPredicate.or(new ListFilterPredicate(indices.get(i+1), values.get(i+1)));
-                    }
-                }
-            }
-
-            List<List<String>> resultSet = fileContents.stream()
-                .filter(compPredicate)
-                .collect(Collectors.toList());
+            
+            List<List<String>> resultSet = ListFilter.filter2DList(fileContents, indices, values, conds);
 
             for (List<String> rows : resultSet) {
                 for (String col : rows) {
