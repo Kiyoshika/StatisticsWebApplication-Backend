@@ -1,7 +1,6 @@
 package com.zweaver.statistics.controller;
 
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -9,15 +8,16 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+import com.zweaver.statistics.entity.FileStorageEntity;
+import com.zweaver.statistics.lib.DataSet;
+import com.zweaver.statistics.repository.FileStorageRepository;
 import com.zweaver.statistics.utility.ListFilter;
-import com.zweaver.statistics.utility.ListFilterPredicate;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.CurrentSecurityContext;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,45 +34,66 @@ public class FileUploadController {
 
     public FileUploadController() {}
 
-    @PostMapping("/uploadFile")
-    public void uploadFile(@RequestParam("file") MultipartFile file) {
+    @Autowired
+    private FileStorageRepository fileStorageRepository;
+
+    // upload CSV files to server and write them to statdb.file_storage
+    @PostMapping("/uploadData")
+    public ResponseEntity<String> uploadFile(
+        @RequestParam("file") MultipartFile file,
+        @RequestParam("filename") String filename,
+        @CurrentSecurityContext(expression = "authentication?.name") String username
+    ) {
         try {
+
             byte[] bytes = file.getBytes();
             Path path = Paths.get(file.getOriginalFilename());
             Files.write(path, bytes);
 
+            List<List<String>> fileContent = new ArrayList<List<String>>();
+            List<String> fileLines = Files.readAllLines(path);
+            for (String currentLine : fileLines) {
+                fileContent.add(Arrays.asList(currentLine.split("\\s*,\\s*")));
+            }
+
+            DataSet dataSet = new DataSet(fileContent);
+
+            FileStorageEntity fileStorage = new FileStorageEntity(username, filename, dataSet);
+            fileStorageRepository.save(fileStorage);
+            return new ResponseEntity<>("File uploaded successfully.", HttpStatus.OK);
+
+
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        return new ResponseEntity<>("There was a problem uploading your file.", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @GetMapping("/viewFile/{filename}")
-    @ResponseBody
-    public void viewFile(@PathVariable String filename) {
-        try {
-            Path path = Paths.get(filename);
-            List<List<String>> fileContents = new ArrayList<List<String>>();
-            List<String> fileLines = Files.readAllLines(path);
-            for (String currentLine : fileLines) {
-                fileContents.add(Arrays.asList(currentLine.split("\\s*,\\s*")));
+    public @ResponseBody DataSet viewFile(
+        @PathVariable String filename,
+        @CurrentSecurityContext(expression = "authentication?.name") String username
+    ) {
+        FileStorageEntity file = fileStorageRepository.findByUsernameAndFilename(username, filename);
+        return file.getDataSet();
+
+        // TODO: add filter() method to DataSet class
+        
+        // example conditions you might get from user
+        /*List<Integer> indices = new ArrayList<Integer>(){{ add(0); add(2); }};
+        List<String> values = new ArrayList<String>(){{ add("a"); add("f"); }};
+        List<String> conds = new ArrayList<String>(){{ add("or"); }};
+
+        List<List<String>> resultSet = ListFilter.filter2DList(fileContents, indices, values, conds);
+
+        for (List<String> rows : resultSet) {
+            for (String col : rows) {
+                System.out.print(col + " ");
             }
+            System.out.println("");
+        }*/
 
-            // example conditions you might get from user
-            List<Integer> indices = new ArrayList<Integer>(){{ add(0); add(2); }};
-            List<String> values = new ArrayList<String>(){{ add("a"); add("f"); }};
-            List<String> conds = new ArrayList<String>(){{ add("or"); }};
-            
-            List<List<String>> resultSet = ListFilter.filter2DList(fileContents, indices, values, conds);
-
-            for (List<String> rows : resultSet) {
-                for (String col : rows) {
-                    System.out.print(col + " ");
-                }
-                System.out.println("");
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    
     }
 }
