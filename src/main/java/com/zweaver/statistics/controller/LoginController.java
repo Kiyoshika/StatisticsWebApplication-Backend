@@ -21,9 +21,10 @@ public class LoginController {
 
     /**
      * Checks if a raw string matches password criteria as follows:
-     * 1. Minimum length of 8 characters
-     * 2. Starts with a letter
-     * 3. Contains at least one number or special character
+     * minimum length of 8 characters,
+     * starts with a letter
+     * and contains at least one number or special character
+     * @param password The raw String password to check criteria
      * @return A boolean indicating if a string matches the required criteria for a password.
      */
     private boolean matchPasswordCriteria(String password) {
