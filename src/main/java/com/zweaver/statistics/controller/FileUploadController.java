@@ -1,6 +1,5 @@
 package com.zweaver.statistics.controller;
 
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,7 +11,6 @@ import java.util.List;
 import com.zweaver.statistics.entity.FileStorageEntity;
 import com.zweaver.statistics.lib.DataSet;
 import com.zweaver.statistics.repository.FileStorageRepository;
-import com.zweaver.statistics.utility.ListFilter;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -27,23 +25,21 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
-
 @Controller
 @RequestMapping("/api/v1/")
 public class FileUploadController {
 
-    public FileUploadController() {}
+    public FileUploadController() {
+    }
 
     @Autowired
     private FileStorageRepository fileStorageRepository;
 
     // upload CSV files to server and write them to statdb.file_storage
     @PostMapping("/uploadData")
-    public ResponseEntity<String> uploadFile(
-        @RequestParam("file") MultipartFile file,
-        @RequestParam("filename") String filename,
-        @CurrentSecurityContext(expression = "authentication?.name") String username
-    ) {
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file,
+            @RequestParam("filename") String filename,
+            @CurrentSecurityContext(expression = "authentication?.name") String username) {
         try {
 
             byte[] bytes = file.getBytes();
@@ -51,17 +47,19 @@ public class FileUploadController {
             Files.write(path, bytes);
 
             List<List<String>> fileContent = new ArrayList<List<String>>();
+            List<String> fileHeaders = new ArrayList<String>();
             List<String> fileLines = Files.readAllLines(path);
+            boolean firstLine = true;
             for (String currentLine : fileLines) {
+                if (firstLine) { fileHeaders = Arrays.asList(currentLine.split("\\s*,\\s*")); firstLine = false; continue; }
                 fileContent.add(Arrays.asList(currentLine.split("\\s*,\\s*")));
             }
 
-            DataSet dataSet = new DataSet(fileContent);
+            DataSet dataSet = new DataSet(fileHeaders, fileContent);
 
             FileStorageEntity fileStorage = new FileStorageEntity(username, filename, dataSet);
             fileStorageRepository.save(fileStorage);
             return new ResponseEntity<>("File uploaded successfully.", HttpStatus.OK);
-
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -70,30 +68,10 @@ public class FileUploadController {
         return new ResponseEntity<>("There was a problem uploading your file.", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    @GetMapping("/viewFile/{filename}")
-    public @ResponseBody DataSet viewFile(
-        @PathVariable String filename,
-        @CurrentSecurityContext(expression = "authentication?.name") String username
-    ) {
+    @GetMapping("/viewData")
+    public @ResponseBody DataSet viewFile(@RequestParam("filename") String filename,
+            @CurrentSecurityContext(expression = "authentication?.name") String username) {
         FileStorageEntity file = fileStorageRepository.findByUsernameAndFilename(username, filename);
         return file.getDataSet();
-
-        // TODO: add filter() method to DataSet class
-        
-        // example conditions you might get from user
-        /*List<Integer> indices = new ArrayList<Integer>(){{ add(0); add(2); }};
-        List<String> values = new ArrayList<String>(){{ add("a"); add("f"); }};
-        List<String> conds = new ArrayList<String>(){{ add("or"); }};
-
-        List<List<String>> resultSet = ListFilter.filter2DList(fileContents, indices, values, conds);
-
-        for (List<String> rows : resultSet) {
-            for (String col : rows) {
-                System.out.print(col + " ");
-            }
-            System.out.println("");
-        }*/
-
-    
     }
 }
