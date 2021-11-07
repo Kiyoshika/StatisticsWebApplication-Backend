@@ -11,12 +11,31 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 @RequestMapping("/api/v1")
 public class LoginController {
+
+    /**
+     * Checks if a raw string matches password criteria as follows:
+     * 1. Minimum length of 8 characters
+     * 2. Starts with a letter
+     * 3. Contains at least one number or special character
+     * @return A boolean indicating if a string matches the required criteria for a password.
+     */
+    private boolean matchPasswordCriteria(String password) {
+        if (password.length() < 8) { return false; }
+        if (!Character.isLetter(password.charAt(0))) { return false; }
+        for (Character c : password.toCharArray()) {
+            if (Character.isDigit(c)) { return true; }
+        }
+        
+        // default catch-all case although technically unreachable
+        return false;
+    }
     
     @Autowired
     private UserRepository userRepository;
@@ -27,13 +46,17 @@ public class LoginController {
 
     @PostMapping("/createUser")
     public ResponseEntity<String> createUser(
-        @RequestParam("username") String username, 
-        @RequestParam("password") String password
+        @RequestHeader("username") String username, 
+        @RequestHeader("password") String password
     ) {
         UserEntity user = userRepository.findByUsername(username);
         if (user == null) {
-            userRepository.save(new UserEntity(username, passwordEncoder().encode(password)));
-            return new ResponseEntity<>("User created successfully.", HttpStatus.CREATED);
+            if (matchPasswordCriteria(password)) {
+                userRepository.save(new UserEntity(username, passwordEncoder().encode(password)));
+                return new ResponseEntity<>("User created successfully.", HttpStatus.CREATED);
+            } else {
+                return new ResponseEntity<>("Please make sure your password is at least 8 characters long, starts with a letter and contains at least one number.", HttpStatus.BAD_REQUEST);
+            }
         }
         
         return new ResponseEntity<>("User already exists.", HttpStatus.BAD_REQUEST);
@@ -42,8 +65,8 @@ public class LoginController {
 
     @GetMapping("/login")
     public ResponseEntity<String> login(
-        @RequestParam("username") String username,
-        @RequestParam("password") String password
+        @RequestHeader("username") String username,
+        @RequestHeader("password") String password
     ) {
         UserEntity user = userRepository.findByUsername(username);
 

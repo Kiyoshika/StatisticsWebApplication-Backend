@@ -27,7 +27,11 @@ public class BasicAuthConfig extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         http
             .authorizeRequests()
-            .antMatchers("/api/v1/uploadFile").authenticated()
+            .antMatchers("/api/v1/createUser").permitAll()
+            .antMatchers("/api/v1/login").permitAll()
+            .and()
+            .authorizeRequests()
+            .anyRequest().authenticated()
             .and()
             .csrf().disable().httpBasic();
     }
