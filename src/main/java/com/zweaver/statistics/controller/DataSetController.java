@@ -1,5 +1,7 @@
 package com.zweaver.statistics.controller;
 
+import java.util.List;
+
 import com.zweaver.statistics.entity.DataSetEntity;
 import com.zweaver.statistics.entity.FileStorageEntity;
 import com.zweaver.statistics.lib.DataSet;
@@ -22,6 +24,12 @@ public class DataSetController {
 
     public DataSetController() {}
 
+    private DataSet fetchData(String username, String filename) {
+        // get data set from repository
+        FileStorageEntity file = fileStorageRepository.findByUsernameAndFilename(username, filename);
+        return file == null ? null : file.getDataSet();
+    }
+
     @Autowired
     private FileStorageRepository fileStorageRepository;
 
@@ -29,12 +37,29 @@ public class DataSetController {
     public @ResponseBody Object filterData(@RequestParam("filename") String filename,
             @CurrentSecurityContext(expression = "authentication?.name") String username,
             @RequestBody DataSetEntity dataFilterEntity) {
-        // get data set from repository
-        FileStorageEntity file = fileStorageRepository.findByUsernameAndFilename(username, filename);
-        if (file == null) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        }
-        DataSet dataSet = file.getDataSet();
-        return new DataSet(dataSet.getHeaders(), dataSet.filter(dataFilterEntity));
+            
+            DataSet dataSet = fetchData(username, filename);
+            if (dataSet == null) { return new ResponseEntity<>("Could not find your data set.", HttpStatus.BAD_REQUEST); }
+            return dataSet.filter(dataFilterEntity);
     }
+
+    @GetMapping("/selectData")
+    public @ResponseBody Object selectData(@RequestParam("filename") String filename,
+        @RequestBody List<String> desiredColumns,
+        @CurrentSecurityContext(expression = "authentication?.name") String username) {
+            
+            DataSet dataSet = fetchData(username, filename);
+            if (dataSet == null) { return new ResponseEntity<>("Could not find your data set.", HttpStatus.BAD_REQUEST); }
+            return dataSet.select(desiredColumns);
+        }
+
+    @GetMapping("/dropData")
+    public @ResponseBody Object dropData(@RequestParam("filename") String filename,
+        @RequestBody List<String> dropColumns,
+        @CurrentSecurityContext(expression = "authentication?.name") String username) {
+            
+            DataSet dataSet = fetchData(username, filename);
+            if (dataSet == null) { return new ResponseEntity<>("Could not find your data set.", HttpStatus.BAD_REQUEST); }
+            return dataSet.drop(dropColumns);
+        }
 }

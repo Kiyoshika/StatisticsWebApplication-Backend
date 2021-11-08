@@ -2,7 +2,9 @@ package com.zweaver.statistics.lib;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -20,7 +22,7 @@ public class DataSet implements Serializable {
     private List<Integer> getHeaderIndices(List<String> headers) {
         List<Integer> headerIndices = new ArrayList<Integer>();
         for (String currentHeader : headers) {
-            headerIndices.add(this.headers.indexOf(currentHeader));
+            headerIndices.add(getHeaders().indexOf(currentHeader));
         }
 
         return headerIndices;
@@ -45,9 +47,9 @@ public class DataSet implements Serializable {
      * @param values List<String> of values to compare columns to with the appropriate conditions
      * @param conditions List<String> of conditions: >, >=, <, <=, ==, !=, contains, startswith, endswith
      * @param logicals List<String> of logicals: and, or
-     * @return A List<List<String>> subset of the original data set with filters applied.
+     * @return A DataSet object which is a subset of the original data set with filters applied.
      */
-    public List<List<String>> filter(DataSetEntity dataFilterEntity) {
+    public DataSet filter(DataSetEntity dataFilterEntity) {
 
         List<Integer> indices = getHeaderIndices(dataFilterEntity.getHeaders());
         List<String> values = dataFilterEntity.getValues();
@@ -67,8 +69,56 @@ public class DataSet implements Serializable {
             }
         }
 
-        return this.data.stream()
+        List<List<String>> filteredData = getData().stream()
             .filter(compPredicate)
             .collect(Collectors.toList());
-}
+
+        return new DataSet(getHeaders(), filteredData);
+    }
+
+    /**
+     * Method to select specific columns from a data set. Essentially the opposite of drop().
+     * 
+     * @param desiredColumns A list of strings indicating the columns the user wants to keep in the data set.
+     * @return A DataSet object that is a subset of the original with the selected columns.
+     */
+    public DataSet select(List<String> desiredColumns) {
+        List<Integer> desiredColumnsIndices = getHeaderIndices(desiredColumns);
+        List<String> subsetHeaders = desiredColumns;
+        List<List<String>> subset = new ArrayList<List<String>>();
+
+        // copy data
+        for (int row = 0; row < getData().size(); ++row) {
+            subset.add(new ArrayList<String>());
+            for (int col = 0; col < desiredColumnsIndices.size(); ++col) {
+                subset.get(row).add(getData().get(row).get(desiredColumnsIndices.get(col)));
+            }
+        }
+
+        return new DataSet(subsetHeaders, subset);
+    }
+
+    /**
+     * Method to drop specific columns from a data set. Essentially the opposite of select().
+     * 
+     * @param dropColumns A list of strings indicating the columns the user wants to drop from the data set.
+     * @return A DataSet object that is a subset of the original without the dropped columns.
+     */
+    public DataSet drop(List<String> dropColumns) {
+        List<Integer> dropColumnIndices = getHeaderIndices(dropColumns);
+        // instead of copying the same code as above, 
+        // we can get the inverse of dropColumnIndices and call select()
+        
+        List<Integer> allIndices = getHeaderIndices(getHeaders());
+        allIndices.removeAll(dropColumnIndices);
+
+        // convert indices back into names to call select()
+        List<String> desiredColumns = new ArrayList<String>();
+        for (int idx = 0; idx < allIndices.size(); ++idx) {
+            desiredColumns.add(getHeaders().get(allIndices.get(idx)));
+        }
+        
+        return select(desiredColumns);
+    }
+
 }
