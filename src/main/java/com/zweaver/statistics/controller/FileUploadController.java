@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.CurrentSecurityContext;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -74,4 +75,16 @@ public class FileUploadController {
         FileStorageEntity file = fileStorageRepository.findByUsernameAndFilename(username, filename);
         return file.getDataSet();
     }
+
+    @DeleteMapping("/removeData")
+    public ResponseEntity<String> removeFile(@RequestParam("filename") String filename,
+        @CurrentSecurityContext(expression = "authentication?.name") String username) {
+            FileStorageEntity file = fileStorageRepository.findByUsernameAndFilename(username, filename);
+            if (file != null) {
+                fileStorageRepository.delete(file);
+                return new ResponseEntity<>("File was successfully deleted.", HttpStatus.OK);
+            }
+
+            return new ResponseEntity<>("Could not find requested file.", HttpStatus.BAD_REQUEST);
+        }
 }
