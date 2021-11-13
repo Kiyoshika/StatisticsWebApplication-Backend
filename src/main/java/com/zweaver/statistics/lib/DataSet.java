@@ -41,6 +41,14 @@ public class DataSet implements Serializable {
         return this.data;
     }
 
+    public void setCell(List<Integer> cellIndices, String value) {
+        this.data.get(cellIndices.get(0)).set(cellIndices.get(1), value);
+    }
+
+    public void setHeader(int headerIndex, String value) {
+        this.headers.set(headerIndex, value);
+    }
+
     /**
      * 
      * @param indices List<Integer> of numerical indices of the columns to apply filters on.

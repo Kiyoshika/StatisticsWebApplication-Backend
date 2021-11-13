@@ -84,4 +84,21 @@ public class FileStorageEntity {
         return null;
     }
 
+    public void setDataSet(DataSet dataSet) {
+        // convert data set object into blob
+        try {
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ObjectOutputStream objStream = new ObjectOutputStream(baos);
+            objStream.writeObject(dataSet);
+            objStream.flush();
+            objStream.close();
+            baos.close();
+
+            this.fileContent = baos.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 }
