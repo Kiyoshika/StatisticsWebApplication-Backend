@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.CurrentSecurityContext;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -61,5 +62,31 @@ public class DataSetController {
             DataSet dataSet = fetchData(username, filename);
             if (dataSet == null) { return new ResponseEntity<>("Could not find your data set.", HttpStatus.BAD_REQUEST); }
             return dataSet.drop(dropColumns);
+        }
+
+    @PostMapping("/editCell")
+    public ResponseEntity<String> editCell(@RequestParam("filename") String filename,
+        @RequestParam("value") String value,
+        @RequestBody List<Integer> cellIndices,
+        @CurrentSecurityContext(expression = "authentication?.name") String username) {
+            FileStorageEntity file = fileStorageRepository.findByUsernameAndFilename(username, filename);
+            DataSet dataSet = file.getDataSet();
+            dataSet.setCell(cellIndices, value);
+            file.setDataSet(dataSet);
+            fileStorageRepository.save(file);
+            return new ResponseEntity<>("Successfully modified cell value.", HttpStatus.OK);
+        }
+
+    @PostMapping("/editHeader")
+    public ResponseEntity<String> editHeader(@RequestParam("filename") String filename,
+        @RequestParam("value") String value,
+        @RequestBody int headerIndex,
+        @CurrentSecurityContext(expression = "authentication?.name") String username) {
+            FileStorageEntity file = fileStorageRepository.findByUsernameAndFilename(username, filename);
+            DataSet dataSet = file.getDataSet();
+            dataSet.setHeader(headerIndex, value);
+            file.setDataSet(dataSet);
+            fileStorageRepository.save(file);
+            return new ResponseEntity<>("Successfully modified header value.", HttpStatus.OK);
         }
 }
