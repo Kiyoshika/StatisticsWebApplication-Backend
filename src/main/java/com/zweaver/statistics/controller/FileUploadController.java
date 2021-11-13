@@ -70,9 +70,10 @@ public class FileUploadController {
     }
 
     @GetMapping("/viewData")
-    public @ResponseBody DataSet viewFile(@RequestParam("filename") String filename,
+    public @ResponseBody Object viewFile(@RequestParam("filename") String filename,
             @CurrentSecurityContext(expression = "authentication?.name") String username) {
         FileStorageEntity file = fileStorageRepository.findByUsernameAndFilename(username, filename);
+        if (file == null) { return new ResponseEntity<>("Could not find requested file.", HttpStatus.BAD_REQUEST); }
         return file.getDataSet();
     }
 
