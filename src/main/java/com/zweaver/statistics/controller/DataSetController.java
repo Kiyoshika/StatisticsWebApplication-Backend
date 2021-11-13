@@ -5,6 +5,7 @@ import java.util.List;
 import com.zweaver.statistics.entity.DataSetEntity;
 import com.zweaver.statistics.entity.FileStorageEntity;
 import com.zweaver.statistics.lib.DataSet;
+import com.zweaver.statistics.msg.Messages;
 import com.zweaver.statistics.repository.FileStorageRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +41,7 @@ public class DataSetController {
             @RequestBody DataSetEntity dataFilterEntity) {
             
             DataSet dataSet = fetchData(username, filename);
-            if (dataSet == null) { return new ResponseEntity<>("Could not find your data set.", HttpStatus.BAD_REQUEST); }
+            if (dataSet == null) { return new ResponseEntity<>(Messages.couldNotFindRequestedFile, HttpStatus.BAD_REQUEST); }
             return dataSet.filter(dataFilterEntity);
     }
 
@@ -50,7 +51,7 @@ public class DataSetController {
         @CurrentSecurityContext(expression = "authentication?.name") String username) {
             
             DataSet dataSet = fetchData(username, filename);
-            if (dataSet == null) { return new ResponseEntity<>("Could not find your data set.", HttpStatus.BAD_REQUEST); }
+            if (dataSet == null) { return new ResponseEntity<>(Messages.couldNotFindRequestedFile, HttpStatus.BAD_REQUEST); }
             return dataSet.select(desiredColumns);
         }
 
@@ -60,7 +61,7 @@ public class DataSetController {
         @CurrentSecurityContext(expression = "authentication?.name") String username) {
             
             DataSet dataSet = fetchData(username, filename);
-            if (dataSet == null) { return new ResponseEntity<>("Could not find your data set.", HttpStatus.BAD_REQUEST); }
+            if (dataSet == null) { return new ResponseEntity<>(Messages.couldNotFindRequestedFile, HttpStatus.BAD_REQUEST); }
             return dataSet.drop(dropColumns);
         }
 
@@ -83,10 +84,22 @@ public class DataSetController {
         @RequestBody int headerIndex,
         @CurrentSecurityContext(expression = "authentication?.name") String username) {
             FileStorageEntity file = fileStorageRepository.findByUsernameAndFilename(username, filename);
+            if (file == null) { return new ResponseEntity<>(Messages.couldNotFindRequestedFile, HttpStatus.BAD_REQUEST); }
             DataSet dataSet = file.getDataSet();
             dataSet.setHeader(headerIndex, value);
             file.setDataSet(dataSet);
             fileStorageRepository.save(file);
             return new ResponseEntity<>("Successfully modified header value.", HttpStatus.OK);
         }
+
+    @PostMapping("/overwriteData")
+    public ResponseEntity<String> overwriteData(@RequestParam("filename") String filename,
+    @RequestBody DataSet newDataSet,
+    @CurrentSecurityContext(expression = "authentication?.name") String username) {
+        FileStorageEntity file = fileStorageRepository.findByUsernameAndFilename(username, filename);
+        if (file == null) { return new ResponseEntity<>(Messages.couldNotFindRequestedFile, HttpStatus.BAD_REQUEST); }
+        file.setDataSet(newDataSet);
+        fileStorageRepository.save(file);
+        return new ResponseEntity<>("Succesffully overwrote file.", HttpStatus.OK);
+    }
 }
